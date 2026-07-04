@@ -61,26 +61,41 @@ Format findings using card-style layout grouped by category.
 Use emoji category headers with horizontal separators.
 Mark duplicate entries inline.
 
+**Formatting rules (strict):**
+- Each category block: `🛠 类别 ─────────` on its own line, always followed by a blank line
+- Each entry: numbered, title on its own line, content indented below, always separated by blank lines
+- Duplicates: same structure but mark `已有记录（不重复）` on the content line
+- Footer separator: `───` on its own line, then prompt on next line
+- Count at top: count only new (non-duplicate) items
+
 Example output:
 
 ```
-📌 本次会话经验提炼（N项）
+📌 本次会话经验提炼（2项）
 
 🛠 多轮攻坚 ─────────────────
-  1. [Docker 构建缓存]
+
+  1. Docker 构建缓存
+
      ARG 顺序导致缓存未命中，将不变 ARG 放 Dockerfile 顶部
+
      ⭐ 推荐保留
 
 💡 决策记录 ─────────────────
-  2. [选择 Vitest]
+
+  2. 选择 Vitest
+
      因项目使用 ESM，Vitest 原生支持，无需额外配置
 
 💡 实用发现 ─────────────────
-  3. [`gh pr diff`]
+
+  3. `gh pr diff`
+
      快速查看 PR 变更，比浏览器方便
      已有记录（不重复）
 
-────────────────────────────────
+────────────────────────────────────
+
 保留哪些？输入编号(如 1,2) / all / none，可直接修改措辞
 ```
 
