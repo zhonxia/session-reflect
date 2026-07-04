@@ -20,6 +20,39 @@ description: >
 
 Extract structured, actionable experience from opencode conversations and persist it for future sessions.
 
+## Design Philosophy
+
+The skill uses a two-layer context injection strategy to ensure experiences
+are actually utilized in new sessions:
+
+**Layer 1 — AGENTS.md (active check)**
+A mandatory rule in the project's `AGENTS.md`:
+```
+在回答之前，先检查 .opencode/experiences.md 中是否有与当前问题相关的历史经验记录。
+```
+This forces Claude to check the experiences file before every answer.
+It applies to all sessions regardless of skill triggers.
+
+**Layer 2 — opencode.json References (passive awareness)**
+The experiences file is registered as an opencode reference with a description:
+```json
+"references": {
+  "experiences": {
+    "path": ".opencode/experiences.md",
+    "description": "Past session experiences, lessons learned, user preferences, and key decisions."
+  }
+}
+```
+Claude knows the file exists and its purpose, and reads it when it judges the
+topic relevant — but does not check it before every reply.
+
+**How they work together:**
+- AGENTS.md solves "Claude doesn't know to look" (breadth)
+- References solve "Claude knows the file but doesn't always connect it" (precision)
+- session-reflect skill solves "how to produce experiences" (source)
+
+All three form a closed loop: **produce (skill) → persist (experiences.md) → consume (AGENTS + References)**
+
 ## Workflow
 
 When triggered, follow these steps in order:
