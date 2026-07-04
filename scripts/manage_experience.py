@@ -8,7 +8,7 @@ Usage:
   python3 scripts/manage_experience.py validate [--path PATH]
 
 Entry JSON format:
-  {"category": "multi-step|decision|preference|discovery|action",
+  {"category": "multi-step|decision|preference|discovery|setup|action",
    "title": "Short title",
    "content": "Detailed description",
    "tags": ["tag1", "tag2"]}
@@ -61,6 +61,7 @@ def format_entry(entry):
         "decision": "决策记录",
         "preference": "用户偏好",
         "discovery": "实用发现",
+        "setup": "个人环境",
         "action": "待办提醒",
     }
     label = category_labels.get(entry["category"], entry["category"])

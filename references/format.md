@@ -27,6 +27,7 @@
 | `决策记录` | Key Decision | 架构/技术选型及其理由 |
 | `用户偏好` | User Preference | 代码风格、命名规范、工具偏好 |
 | `实用发现` | Useful Discovery | 好用的命令、库、模式 |
+| `个人环境` | Personal Setup | 终端配置、环境变量、已安装工具、shell 偏好、系统信息 |
 | `待办提醒` | Action Item | 下次需要继续做的事情 |
 
 ## 标签系统

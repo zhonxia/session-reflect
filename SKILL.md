@@ -34,6 +34,7 @@ Analyze the ongoing conversation for these categories:
 | **Key Decisions** | Architecture/tech/library choices with rationale ("chose X over Y because Z") |
 | **User Preferences** | Recurring style: code conventions, naming, tools, workflows, formatting |
 | **Useful Discoveries** | Commands, shortcuts, libraries, tricks that were new or noteworthy |
+| **Personal Setup** | Terminal config, env vars, installed tools, shell preferences, system info, alias, editor choice |
 | **Action Items** | Unfinished business, follow-ups, things to resume next session |
 
 ### 2. Read Supplemental History
@@ -60,6 +61,13 @@ check the existing entries for matches. Mark duplicates as `✓ 已收录`.
 Format findings using card-style layout grouped by category.
 Use emoji category headers with horizontal separators.
 Mark duplicate entries inline.
+
+**Category emoji mapping:**
+- `🛠` = Multi-step Resolutions
+- `💡` = Key Decisions / Useful Discoveries
+- `🎨` = User Preferences
+- `🔧` = Personal Setup
+- `📋` = Action Items
 
 **Formatting rules (strict):**
 - Each category block: `🛠 类别 ─────────` on its own line, always followed by a blank line
@@ -93,6 +101,12 @@ Example output:
 
      快速查看 PR 变更，比浏览器方便
      ✓ 已收录
+
+🔧 个人环境 ─────────────────
+
+  4. 默认编辑器
+
+     系统 $EDITOR 是 neovim，git 也使用 nvim 作为编辑器
 
 ────────────────────────────────────
 
@@ -134,3 +148,4 @@ See `references/format.md` for the experiences file format specification, catego
 - This skill works best with the opencode CLI/TUI (which stores full session data in `opencode.db`). The desktop app stores only prompt history in JSONL format.
 - Always present findings for user approval before writing. Never auto-append entries.
 - For the current session analysis, Claude already has the full conversation in context — no file reading needed for step 1.
+- **Security: NEVER extract or save passwords, API keys, tokens, or any credentials.** The experiences file is plain markdown and may be committed to git. Use a dedicated password manager (1Password, Bitwarden) or opencode MCP secrets for sensitive data.
