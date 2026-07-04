@@ -10,8 +10,12 @@ Usage:
 Entry JSON format:
   {"category": "multi-step|decision|preference|discovery|setup|action",
    "title": "Short title",
-   "content": "Detailed description",
+   "content": "Detailed description (supports **bold** markers)",
    "tags": ["tag1", "tag2"]}
+
+  The script checks for this structured content pattern in the content field:
+  【现象】... 【洞察】... 【价值】... 【行动】...
+  If found, it renders them as separate bold lines instead of a single content block.
 """
 
 import argparse
@@ -68,9 +72,22 @@ def format_entry(entry):
     tags = ""
     if entry.get("tags"):
         tags = "  `" + " ".join(f"#{t}" for t in entry["tags"]) + "`"
+
+    content = entry.get("content", "")
+    # Check for structured content pattern
+    import re as re_mod
+    sections = re_mod.findall(
+        r"【(.+?)】(.+?)(?=【|\Z)", content, re_mod.DOTALL
+    )
+    if sections:
+        lines = [f"### [{label}] {entry['title']}{tags}"]
+        for key, val in sections:
+            lines.append(f"- **{key.strip()}**：{val.strip()}")
+        return "\n".join(lines) + "\n"
+
     return (
         f"### [{label}] {entry['title']}{tags}\n"
-        f"- **内容**：{entry['content']}\n"
+        f"- **内容**：{content}\n"
     )
 
 

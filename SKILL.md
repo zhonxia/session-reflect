@@ -70,6 +70,16 @@ Analyze the ongoing conversation for these categories:
 | **Personal Setup** | Terminal config, env vars, installed tools, shell preferences, system info, alias, editor choice |
 | **Action Items** | Unfinished business, follow-ups, things to resume next session |
 
+**Writing structure for each entry:**
+Every entry must contain these four layers — don't just describe what happened:
+
+| Layer | Purpose | Example |
+|-------|---------|---------|
+| **现象** | What happened (the observable fact) | "README 改成了用户手册风格" |
+| **洞察** | Why it matters (the deeper lesson) | "顶级 skill 把 README 当产品 landing page，直接影响采用率" |
+| **价值** | When it helps again (future scenarios) | "下次开源项目直接复用这个结构" |
+| **行动** | How to apply it (concrete next steps) | "新建项目时复制徽章 + ASCII 流程图 + 安装步骤模板" |
+
 ### 2. Read Supplemental History
 
 Use `scripts/analyze_history.py` to get structured data from past sessions:
@@ -116,9 +126,14 @@ Example output:
 
 🛠 多轮攻坚 ─────────────────
 
-  1. Docker 构建缓存
+  1. Docker 构建缓存失效
 
-     ARG 顺序导致缓存未命中，将不变 ARG 放 Dockerfile 顶部
+     【现象】多次构建缓存未命中，每次都要重新下载依赖
+     【洞察】Dockerfile 中 ARG 声明顺序影响缓存键计算，
+            不变的部分放在前面可以最大化缓存命中
+     【价值】以后写 Dockerfile 都要注意：不变指令放前面，
+            变化指令放后面
+     【行动】项目 Dockerfile 首部集中声明所有 ARG
 
      ⭐ 推荐保留
 
@@ -126,7 +141,10 @@ Example output:
 
   2. 选择 Vitest
 
-     因项目使用 ESM，Vitest 原生支持，无需额外配置
+     【现象】从 Jest 切换到 Vitest
+     【洞察】项目使用 ESM，Jest 的 ESM 支持不成熟，
+            Vitest 原生支持 ESM，零配置
+     【价值】新项目如果是 ESM 优先考虑 Vitest 而非 Jest
 
 💡 实用发现 ─────────────────
 
