@@ -53,7 +53,7 @@ Look for:
 ### 3. Cross-Reference Existing Experiences
 
 Read `.opencode/experiences.md` if it exists. For each candidate entry,
-check the existing entries for matches. Mark duplicates as `已有记录（不重复）`.
+check the existing entries for matches. Mark duplicates as `✓ 已收录`.
 
 ### 4. Present Findings to User
 
@@ -64,7 +64,7 @@ Mark duplicate entries inline.
 **Formatting rules (strict):**
 - Each category block: `🛠 类别 ─────────` on its own line, always followed by a blank line
 - Each entry: numbered, title on its own line, content indented below, always separated by blank lines
-- Duplicates: same structure but mark `已有记录（不重复）` on the content line
+- Duplicates: same structure but mark `✓ 已收录` on the content line
 - Footer separator: `───` on its own line, then prompt on next line
 - Count at top: count only new (non-duplicate) items
 
@@ -92,7 +92,7 @@ Example output:
   3. `gh pr diff`
 
      快速查看 PR 变更，比浏览器方便
-     已有记录（不重复）
+     ✓ 已收录
 
 ────────────────────────────────────
 
