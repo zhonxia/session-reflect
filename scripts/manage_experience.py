@@ -8,8 +8,10 @@ Usage:
   python3 scripts/manage_experience.py validate [--path PATH]
 
 Entry JSON format:
-  {"title": "...", "kind": "BugFix", "problem": "...", "insight": "...",
-   "apply": "...", "trigger": [...], "evidence": "⭐⭐⭐", "keywords": [...]}
+  {"title": "...", "kind": "Knowledge|Lesson|Decision|AntiPattern|Resume",
+   "source": "User|WebSearch|Experiment|OfficialDocs|Inference",
+   "problem": "...", "insight": "...", "apply": "...",
+   "negative": true, "trigger": [...], "evidence": "⭐⭐⭐", "keywords": [...]}
   Only title is required; all other fields are optional.
 """
 
@@ -42,8 +44,8 @@ SENSITIVE_PATTERNS = [
     ("aws access key", re.compile(r"\bAKIA[0-9A-Z]{16}\b")),
 ]
 
-FIELD_KEYS = {"类型": "kind", "问题": "problem", "经验": "insight", "适用": "apply", "触发": "trigger", "证据": "evidence", "关键词": "keywords"}
-VALID_KINDS = {"BugFix", "Decision", "Workflow", "Preference", "Discovery", "AntiPattern", "Optimization", "Resume"}
+FIELD_KEYS = {"类型": "kind", "来源": "source", "问题": "problem", "经验": "insight", "适用": "apply", "否定": "negative", "触发": "trigger", "证据": "evidence", "关键词": "keywords"}
+VALID_KINDS = {"Knowledge", "Lesson", "Decision", "AntiPattern", "Resume"}
 
 
 def resolve_path(path):
@@ -126,6 +128,17 @@ def parse_entry(entry):
             raise ValueError(f"invalid kind '{kind}'. Allowed: {allowed}")
         result["kind"] = kind
 
+    source = entry.get("source", "")
+    if source:
+        result["source"] = str(source).strip()
+
+    negative = entry.get("negative")
+    if negative is not None:
+        if isinstance(negative, bool):
+            result["negative"] = negative
+        elif isinstance(negative, str) and negative.lower() == "true":
+            result["negative"] = True
+
     for eng_field in ("problem", "insight", "apply", "evidence"):
         val = entry.get(eng_field, "")
         if val:
@@ -152,6 +165,7 @@ def sensitive_hits(entry):
     text = "\n".join([
         entry.get("title", ""),
         entry.get("kind", ""),
+        entry.get("source", ""),
         entry.get("problem", ""),
         entry.get("insight", ""),
         entry.get("apply", ""),
@@ -189,7 +203,13 @@ def find_duplicate(entry, existing_entries):
 
 
 def _field_line(key_cn, value):
-    if key_cn == "关键词":
+    if key_cn == "否定":
+        if isinstance(value, bool):
+            return f"- **{key_cn}**：{'true' if value else 'false'}\n"
+        if value and str(value).lower() == 'true':
+            return f"- **{key_cn}**：true\n"
+        return ""
+    if key_cn in ("关键词", "触发"):
         if isinstance(value, list):
             val_str = ", ".join(value)
         else:
@@ -206,10 +226,10 @@ def format_entry(entry):
     title = entry["title"]
     lines = [f"### {title}\n"]
     cn_keys = {v: k for k, v in FIELD_KEYS.items()}
-    for key_cn in ("类型", "问题", "经验", "适用", "触发", "证据", "关键词"):
+    for key_cn in ("类型", "来源", "问题", "经验", "适用", "否定", "触发", "证据", "关键词"):
         eng = FIELD_KEYS[key_cn]
         val = entry.get(eng)
-        if val:
+        if val or (key_cn == "否定" and isinstance(val, bool)):
             lines.append(_field_line(key_cn, val))
     text = "".join(lines)
     if text.endswith("\n\n"):

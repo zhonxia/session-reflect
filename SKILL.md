@@ -28,9 +28,9 @@ persist selected items for future sessions.
 
 ## Workflow
 
-1. **Scan** the current conversation for reusable experience:
-   multi-step resolutions, key decisions, user preferences, useful discoveries,
-   personal setup facts, and action items.
+1. **Scan** the current conversation for distillable items:
+   Knowledge (facts taught by user or found via search),
+   Lessons (what to do), Decisions (why), AntiPatterns (what not to do).
 2. **Review history** (when useful):
    `python3 <skill-dir>/scripts/analyze_history.py --limit 10`
 3. **Cross-check** existing experiences and mark duplicates:
@@ -109,39 +109,40 @@ If a lesson applies beyond the current project, promote instead of only saving t
 
 | Header | Use for |
 |--------|---------|
-| `🛠 多轮攻坚` | Problems solved after multiple attempts |
-| `💡 决策记录` | Architecture, tool, or process decisions |
-| `💡 实用发现` | Commands, libraries, shortcuts, useful facts |
-| `🎨 用户偏好` | Style, naming, workflow, and formatting preferences |
-| `🔧 个人环境` | Local setup, shell, editor, paths, installed tools |
-| `📋 待办提醒` | Follow-ups and unfinished work |
+| `🧠 Knowledge` | Objective facts about systems, tools, or behaviors |
+| `💡 Lesson` | What to do — best practices and actionable methods |
+| `⚖️ Decision` | Why something was designed or chosen this way |
+| `🚫 AntiPattern` | What not to do — verified dead ends |
 
 ### Template
 
 ```text
-📌 本次会话经验提炼（N项）
+📌 本次会话蒸馏（N项）
 
-🛠 BugFix ─────────────────
+🧠 Knowledge ─────────────────
 
   1. 标题
 
-     类型：BugFix
+     类型：Knowledge
+     来源：User
      问题：一句话
-     经验：一句话
-     适用：一句话
+     经验：事实描述
+     适用：复用场景
      触发：keyword1, keyword2
      证据：⭐⭐⭐
 
      ⭐ 推荐保留
 
-💡 Discovery ─────────────────
+💡 Lesson ─────────────────
 
   2. 标题
 
-     类型：Discovery
+     类型：Lesson
+     来源：Experiment
      问题：一句话
-     经验：一句话
-     适用：一句话
+     经验：核心方法
+     适用：复用场景
+     否定：true
      触发：keyword1
 
      ✓ 已收录
@@ -159,10 +160,12 @@ Each saved entry uses this structure:
 
 ```markdown
 ### 标题
-- **类型**：BugFix | Decision | Workflow | Preference | Discovery | AntiPattern | Optimization | Resume
+- **类型**：Knowledge | Lesson | Decision | AntiPattern | Resume
+- **来源**：User | WebSearch | Experiment | OfficialDocs | Inference（可选）
 - **问题**：场景或问题描述（一句话）
-- **经验**：核心教训或发现（一句话）
+- **经验**：事实 / 方法 / 推理 / 不要做
 - **适用**：什么时候会再次有用（一句话）
+- **否定**：true（可选，标记为"不要再试"）
 - **触发**：keyword1, keyword2（可选，用于精准检索）
 - **证据**：⭐⭐⭐（可选，可信度标记）
 - **关键词**：tag1, tag2, tag3
@@ -170,27 +173,26 @@ Each saved entry uses this structure:
 
 ### Type Reference
 
-| Type | Meaning | Example |
-|------|---------|---------|
-| `BugFix` | A bug or error and how it was fixed | SSH key not configured → use HTTPS |
-| `Decision` | Architecture, tool, or design choice with rationale | AGENTS.md for breadth, Skill for depth |
-| `Workflow` | A repeatable process or procedure | Steps to sync and distribute a skill |
-| `Preference` | User's stable style, naming, or tool preference | Use tabs over spaces |
-| `Discovery` | New knowledge or useful fact | opencode CLI uses SQLite, not JSONL |
-| `AntiPattern` | Something to avoid | Don't spread rules across multiple .md files |
-| `Optimization` | Performance or efficiency improvement | ARG order in Dockerfile affects cache |
-| `Resume` | Unfinished work for next session | Implement PDF export for report module |
+| Type | Judgment question | Example |
+|------|-------------------|---------|
+| `Knowledge` | Is this telling the future AI a **fact** about how something works? | opencode CLI uses SQLite, not JSONL |
+| `Lesson` | Is this telling the future AI **what to do** in a specific situation? | SSH fails → use HTTPS remote URL |
+| `Decision` | Is this explaining **why** something was designed or chosen this way? | AGENTS.md for breadth, Skill for depth |
+| `AntiPattern` | Is this telling the future AI **not to do** something? | Don't spread rules across multiple .md files |
+| `Resume` | Is this tracking **unfinished work** for next session? | Implement PDF export for report module |
 
 ### Field Descriptions
 
 | Field | Purpose | Required |
 |-------|---------|----------|
-| **类型** | Experience type (for retrieval and filtering) | Yes |
+| **类型** | Distillation type (for retrieval and filtering) | Yes |
+| **来源** | Where this knowledge came from | Recommended for Knowledge |
 | **问题** | What happened — the scenario, doubt, or problem | Yes |
-| **经验** | The key lesson — what was discovered, decided, or learned | Yes |
-| **适用** | When this knowledge helps again — future scenarios | Yes |
-| **触发** | Exact-match keywords for retrieval: when query contains these, hit this entry | Recommended |
-| **证据** | Confidence level: ⭐ = hypothesis, ⭐⭐ = observed, ⭐⭐⭐ = verified | Recommended |
+| **经验** | The core fact, method, reasoning, or warning | Yes |
+| **适用** | When this helps again — future scenarios | Yes |
+| **否定** | Mark true if this is a "don't try this" entry | Optional |
+| **触发** | Exact-match keywords for retrieval | Recommended |
+| **证据** | Confidence: ⭐ hypothesis / ⭐⭐ observed / ⭐⭐⭐ verified | Recommended |
 | **关键词** | Search tags: language, tool, concept | Recommended |
 
 ### JSON Format (for append script)
@@ -198,7 +200,8 @@ Each saved entry uses this structure:
 ```json
 {
   "title": "GitHub Push SSH 配置",
-  "kind": "BugFix",
+  "kind": "Lesson",
+  "source": "Experiment",
   "problem": "首次推送时 SSH key 未配置，git push 被拒绝",
   "insight": "改用 HTTPS remote URL 可绕过 SSH 验证",
   "apply": "新机器首次配置 GitHub 时",
@@ -220,7 +223,8 @@ Each saved entry uses this structure:
 ## YYYY-MM-DD
 
 ### 标题
-- **类型**：BugFix
+- **类型**：Knowledge
+- **来源**：User
 - **问题**：描述
 - **经验**：描述
 - **适用**：描述
