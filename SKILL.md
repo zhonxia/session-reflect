@@ -26,20 +26,25 @@ The skill uses a two-layer context injection strategy to ensure experiences
 are actually utilized in new sessions:
 
 **Layer 1 — AGENTS.md (active check)**
-A mandatory rule in the project's `AGENTS.md`:
-```
+A mandatory rule in the project's `AGENTS.md` (see `examples/quickstart/AGENTS.md`):
+
+```markdown
 在回答之前，先检查 .opencode/experiences.md 中是否有与当前问题相关的历史经验记录。
 ```
+
 This forces Claude to check the experiences file before every answer.
 It applies to all sessions regardless of skill triggers.
 
 **Layer 2 — opencode.json References (passive awareness)**
-The experiences file is registered as an opencode reference with a description:
+The experiences file is registered as an opencode reference with a description (see `examples/quickstart/opencode.json`):
+
 ```json
-"references": {
-  "experiences": {
-    "path": ".opencode/experiences.md",
-    "description": "Past session experiences, lessons learned, user preferences, and key decisions."
+{
+  "references": {
+    "experiences": {
+      "path": ".opencode/experiences.md",
+      "description": "关键经验记录。回答任何问题前必须读取此文件。"
+    }
   }
 }
 ```

@@ -62,19 +62,22 @@ cp -r session-reflect ~/.config/opencode/skills/session-reflect
 
 ### Enable Cross-Session Memory
 
-```bash
-# Create opencode.json in your project root:
-{
-  "references": {
-    "experiences": {
-      "path": ".opencode/experiences.md",
-      "description": "Past session experiences, lessons learned, user preferences, and key decisions."
-    }
-  }
-}
+Copy the quickstart files to your project root:
 
-# Create AGENTS.md with:
-echo "在回答之前，先检查 .opencode/experiences.md 中是否有与当前问题相关的历史经验记录。" >> AGENTS.md
+```bash
+cp examples/quickstart/* /path/to/your/project/
+```
+
+Or see the individual files below for reference:
+
+- `examples/quickstart/AGENTS.md` — Forces Claude to check experiences before every answer
+- `examples/quickstart/opencode.json` — Registers the experiences file as an opencode reference
+
+Create the initial experiences file:
+
+```bash
+mkdir -p .opencode
+touch .opencode/experiences.md
 ```
 
 ---
@@ -156,6 +159,10 @@ session-reflect/
 ├── SKILL.md                        # Skill instructions (auto-triggered)
 ├── README.md                       # This file
 ├── .gitignore
+├── examples/
+│   └── quickstart/
+│       ├── AGENTS.md               # Mandatory experience check rule
+│       └── opencode.json           # Reference registration config
 ├── scripts/
 │   ├── analyze_history.py          # Reads opencode.db for past session patterns
 │   └── manage_experience.py        # Reads/writes/validates experiences.md

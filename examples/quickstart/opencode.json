@@ -1,0 +1,9 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "references": {
+    "experiences": {
+      "path": ".opencode/experiences.md",
+      "description": "关键经验记录。回答任何问题前必须读取此文件。包含历史会话的教训、用户偏好、关键决策和实用发现。引用时标注 #经验。"
+    }
+  }
+}
