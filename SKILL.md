@@ -121,24 +121,28 @@ If a lesson applies beyond the current project, promote instead of only saving t
 ```text
 📌 本次会话经验提炼（N项）
 
-🛠 多轮攻坚 ─────────────────
+🛠 BugFix ─────────────────
 
   1. 标题
 
+     类型：BugFix
      问题：一句话
      经验：一句话
      适用：一句话
-     关键词：tag1, tag2
+     触发：keyword1, keyword2
+     证据：⭐⭐⭐
 
      ⭐ 推荐保留
 
-💡 实用发现 ─────────────────
+💡 Discovery ─────────────────
 
   2. 标题
 
+     类型：Discovery
      问题：一句话
      经验：一句话
      适用：一句话
+     触发：keyword1
 
      ✓ 已收录
 
@@ -155,29 +159,51 @@ Each saved entry uses this structure:
 
 ```markdown
 ### 标题
+- **类型**：BugFix | Decision | Workflow | Preference | Discovery | AntiPattern | Optimization | Resume
 - **问题**：场景或问题描述（一句话）
 - **经验**：核心教训或发现（一句话）
 - **适用**：什么时候会再次有用（一句话）
+- **触发**：keyword1, keyword2（可选，用于精准检索）
+- **证据**：⭐⭐⭐（可选，可信度标记）
 - **关键词**：tag1, tag2, tag3
 ```
+
+### Type Reference
+
+| Type | Meaning | Example |
+|------|---------|---------|
+| `BugFix` | A bug or error and how it was fixed | SSH key not configured → use HTTPS |
+| `Decision` | Architecture, tool, or design choice with rationale | AGENTS.md for breadth, Skill for depth |
+| `Workflow` | A repeatable process or procedure | Steps to sync and distribute a skill |
+| `Preference` | User's stable style, naming, or tool preference | Use tabs over spaces |
+| `Discovery` | New knowledge or useful fact | opencode CLI uses SQLite, not JSONL |
+| `AntiPattern` | Something to avoid | Don't spread rules across multiple .md files |
+| `Optimization` | Performance or efficiency improvement | ARG order in Dockerfile affects cache |
+| `Resume` | Unfinished work for next session | Implement PDF export for report module |
 
 ### Field Descriptions
 
 | Field | Purpose | Required |
 |-------|---------|----------|
+| **类型** | Experience type (for retrieval and filtering) | Yes |
 | **问题** | What happened — the scenario, doubt, or problem | Yes |
 | **经验** | The key lesson — what was discovered, decided, or learned | Yes |
 | **适用** | When this knowledge helps again — future scenarios | Yes |
-| **关键词** | Search tags for retrieval: language, tool, concept | Recommended |
+| **触发** | Exact-match keywords for retrieval: when query contains these, hit this entry | Recommended |
+| **证据** | Confidence level: ⭐ = hypothesis, ⭐⭐ = observed, ⭐⭐⭐ = verified | Recommended |
+| **关键词** | Search tags: language, tool, concept | Recommended |
 
 ### JSON Format (for append script)
 
 ```json
 {
   "title": "GitHub Push SSH 配置",
+  "kind": "BugFix",
   "problem": "首次推送时 SSH key 未配置，git push 被拒绝",
   "insight": "改用 HTTPS remote URL 可绕过 SSH 验证",
   "apply": "新机器首次配置 GitHub 时",
+  "trigger": ["permission denied", "push failed"],
+  "evidence": "⭐⭐⭐",
   "keywords": ["git", "github", "ssh"]
 }
 ```
@@ -194,9 +220,12 @@ Each saved entry uses this structure:
 ## YYYY-MM-DD
 
 ### 标题
+- **类型**：BugFix
 - **问题**：描述
 - **经验**：描述
 - **适用**：描述
+- **触发**：keyword1, keyword2
+- **证据**：⭐⭐⭐
 - **关键词**：tag1, tag2
 ```
 

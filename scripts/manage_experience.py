@@ -8,8 +8,9 @@ Usage:
   python3 scripts/manage_experience.py validate [--path PATH]
 
 Entry JSON format:
-  {"title": "...", "problem": "...", "insight": "...", "apply": "...", "keywords": [...]}
-  Only title is required; problem/insight/apply/keywords are optional.
+  {"title": "...", "kind": "BugFix", "problem": "...", "insight": "...",
+   "apply": "...", "trigger": [...], "evidence": "⭐⭐⭐", "keywords": [...]}
+  Only title is required; all other fields are optional.
 """
 
 import argparse
@@ -41,7 +42,8 @@ SENSITIVE_PATTERNS = [
     ("aws access key", re.compile(r"\bAKIA[0-9A-Z]{16}\b")),
 ]
 
-FIELD_KEYS = {"问题": "problem", "经验": "insight", "适用": "apply", "关键词": "keywords"}
+FIELD_KEYS = {"类型": "kind", "问题": "problem", "经验": "insight", "适用": "apply", "触发": "trigger", "证据": "evidence", "关键词": "keywords"}
+VALID_KINDS = {"BugFix", "Decision", "Workflow", "Preference", "Discovery", "AntiPattern", "Optimization", "Resume"}
 
 
 def resolve_path(path):
@@ -71,10 +73,9 @@ def _parse_fields(body):
             key = m.group(1).strip()
             val = m.group(2).strip()
             eng = FIELD_KEYS.get(key, key)
-            if eng == "keywords":
-                # Parse comma/space-separated tags
-                tags = [t.strip() for t in re.split(r"[,\s]+", val) if t.strip()]
-                fields[eng] = tags
+            if eng in ("keywords", "trigger"):
+                items = [t.strip() for t in re.split(r"[,\s]+", val) if t.strip()]
+                fields[eng] = items
             else:
                 fields[eng] = val
     return fields
@@ -116,16 +117,33 @@ def parse_entry(entry):
         raise ValueError("title is required")
 
     result = {"title": title}
-    for eng_field in ("problem", "insight", "apply"):
+
+    kind = entry.get("kind", "")
+    if kind:
+        kind = str(kind).strip()
+        if kind not in VALID_KINDS:
+            allowed = ", ".join(sorted(VALID_KINDS))
+            raise ValueError(f"invalid kind '{kind}'. Allowed: {allowed}")
+        result["kind"] = kind
+
+    for eng_field in ("problem", "insight", "apply", "evidence"):
         val = entry.get(eng_field, "")
         if val:
             result[eng_field] = str(val).strip()
 
-    keywords = entry.get("keywords", [])
-    if keywords and isinstance(keywords, list):
-        result["keywords"] = [str(k).strip() for k in keywords if str(k).strip()]
-    elif isinstance(keywords, str):
-        result["keywords"] = [k.strip() for k in keywords.split(",") if k.strip()]
+    def _parse_list(v):
+        if isinstance(v, list):
+            return [str(x).strip() for x in v if str(x).strip()]
+        if isinstance(v, str):
+            return [x.strip() for x in v.split(",") if x.strip()]
+        return []
+
+    for eng_field in ("trigger", "keywords"):
+        val = entry.get(eng_field)
+        if val:
+            parsed = _parse_list(val)
+            if parsed:
+                result[eng_field] = parsed
 
     return result
 
@@ -133,9 +151,13 @@ def parse_entry(entry):
 def sensitive_hits(entry):
     text = "\n".join([
         entry.get("title", ""),
+        entry.get("kind", ""),
         entry.get("problem", ""),
         entry.get("insight", ""),
         entry.get("apply", ""),
+        entry.get("evidence", ""),
+        " ".join(entry.get("trigger", [])),
+        " ".join(entry.get("keywords", [])),
     ])
     return [name for name, pattern in SENSITIVE_PATTERNS if pattern.search(text)]
 
@@ -184,7 +206,7 @@ def format_entry(entry):
     title = entry["title"]
     lines = [f"### {title}\n"]
     cn_keys = {v: k for k, v in FIELD_KEYS.items()}
-    for key_cn in ("问题", "经验", "适用", "关键词"):
+    for key_cn in ("类型", "问题", "经验", "适用", "触发", "证据", "关键词"):
         eng = FIELD_KEYS[key_cn]
         val = entry.get(eng)
         if val:
@@ -271,6 +293,9 @@ def validate(path):
         fields = _parse_fields(entry["body"])
         if not fields.get("problem") and not fields.get("insight") and not fields.get("apply"):
             errors.append(f"Entry '{entry['title']}' has no recognizable fields")
+        kind = fields.get("kind", "")
+        if kind and kind not in VALID_KINDS:
+            errors.append(f"Entry '{entry['title']}' has invalid kind '{kind}'")
 
     if errors:
         for e in errors:
