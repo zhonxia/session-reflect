@@ -8,17 +8,11 @@ Usage:
   python3 scripts/manage_experience.py validate [--path PATH]
 
 Entry JSON format:
-  {"category": "multi-step|decision|preference|discovery|setup|action",
-   "title": "Short title",
-   "content": "Detailed description (supports **bold** markers)",
-   "tags": ["tag1", "tag2"]}
-
-  The script checks for this structured content pattern in the content field:
-  【现象】... 【洞察】... 【价值】... 【行动】...
-  If found, it renders them as separate bold lines instead of a single content block.
+  {"title": "Short title", "content": "One-sentence insight"}
 """
 
 import argparse
+import difflib
 import json
 import os
 import re
@@ -27,6 +21,21 @@ from datetime import date
 
 
 DEFAULT_PATH = ".opencode/experiences.md"
+ENTRY_SEP = " — "
+
+SENSITIVE_PATTERNS = [
+    ("private key", re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----")),
+    (
+        "secret assignment",
+        re.compile(
+            r"\b(api[_-]?key|secret|token|password|passwd|pwd|access[_-]?token|refresh[_-]?token)\b\s*[:=]\s*['\"]?[^'\"\s]{8,}",
+            re.IGNORECASE,
+        ),
+    ),
+    ("openai key", re.compile(r"\bsk-[A-Za-z0-9_-]{20,}\b")),
+    ("github token", re.compile(r"\bgh[pousr]_[A-Za-z0-9_]{20,}\b")),
+    ("aws access key", re.compile(r"\bAKIA[0-9A-Z]{16}\b")),
+]
 
 
 def resolve_path(path):
@@ -36,89 +45,148 @@ def resolve_path(path):
     return os.path.join(cwd, path)
 
 
+def load_text(path):
+    with open(path, "r") as f:
+        return f.read()
+
+
+def write_text(path, content):
+    with open(path, "w") as f:
+        f.write(content)
+
+
 def read_experiences(path):
     path = resolve_path(path)
     if not os.path.exists(path):
         return []
-    with open(path, "r") as f:
-        content = f.read()
+    content = load_text(path)
 
     entries = []
-    pattern = re.compile(
-        r"### \[(.+?)\] (.+?)\n- \*\*内容\*\*：(.+?)(?=\n### |\n## |\Z)",
-        re.DOTALL,
-    )
-    for match in pattern.finditer(content):
-        entries.append(
-            {
-                "category": match.group(1),
-                "title": match.group(2),
-                "content": match.group(3).strip(),
-            }
-        )
+    lines = content.split("\n")
+    for i, line in enumerate(lines):
+        stripped = line.strip()
+        if ENTRY_SEP in stripped:
+            # Skip lines that are clearly not entries: headings, blank lines
+            if stripped.startswith("#") or stripped.startswith("-") or stripped.startswith(">") or stripped.startswith("```"):
+                continue
+            parts = stripped.split(ENTRY_SEP, 1)
+            title = parts[0].strip()
+            content_text = parts[1].strip()
+            if title and content_text:
+                entries.append({
+                    "title": title,
+                    "content": content_text,
+                })
     return entries
 
 
-def format_entry(entry):
-    category_labels = {
-        "multi-step": "多轮攻坚",
-        "decision": "决策记录",
-        "preference": "用户偏好",
-        "discovery": "实用发现",
-        "setup": "个人环境",
-        "action": "待办提醒",
+def parse_entry(entry):
+    if isinstance(entry, str):
+        try:
+            entry = json.loads(entry)
+        except json.JSONDecodeError as exc:
+            raise ValueError(f"invalid JSON: {exc}") from exc
+    if not isinstance(entry, dict):
+        raise ValueError("entry must be a JSON object")
+
+    title = str(entry.get("title", "")).strip()
+    content_text = str(entry.get("content", "")).strip()
+
+    if not title:
+        raise ValueError("title is required")
+    if not content_text:
+        raise ValueError("content is required")
+
+    return {
+        "title": title,
+        "content": content_text,
     }
-    label = category_labels.get(entry["category"], entry["category"])
-    tags = ""
-    if entry.get("tags"):
-        tags = "  `" + " ".join(f"#{t}" for t in entry["tags"]) + "`"
 
-    content = entry.get("content", "")
-    # Check for structured content pattern
-    import re as re_mod
-    sections = re_mod.findall(
-        r"【(.+?)】(.+?)(?=【|\Z)", content, re_mod.DOTALL
-    )
-    if sections:
-        lines = [f"### [{label}] {entry['title']}{tags}"]
-        for key, val in sections:
-            lines.append(f"- **{key.strip()}**：{val.strip()}")
-        return "\n".join(lines) + "\n"
 
-    return (
-        f"### [{label}] {entry['title']}{tags}\n"
-        f"- **内容**：{content}\n"
-    )
+def sensitive_hits(entry):
+    text = "\n".join([
+        entry.get("title", ""),
+        entry.get("content", ""),
+    ])
+    return [name for name, pattern in SENSITIVE_PATTERNS if pattern.search(text)]
+
+
+def normalize_text(text):
+    text = text.lower()
+    return re.sub(r"[^\w\u4e00-\u9fff]+", "", text)
+
+
+def similarity(left, right):
+    if not left or not right:
+        return 0.0
+    return difflib.SequenceMatcher(None, left, right).ratio()
+
+
+def find_duplicate(entry, existing_entries):
+    title = normalize_text(entry["title"])
+    content_text = normalize_text(entry["content"])
+    for existing in existing_entries:
+        existing_title = normalize_text(existing.get("title", ""))
+        existing_content = normalize_text(existing.get("content", ""))
+        title_ratio = similarity(title, existing_title)
+        content_ratio = similarity(content_text, existing_content)
+        title_contains = (
+            min(len(title), len(existing_title)) >= 8
+            and (title in existing_title or existing_title in title)
+        )
+        if title_ratio >= 0.92 or title_contains:
+            return existing
+        if min(len(content_text), len(existing_content)) >= 40 and content_ratio >= 0.88:
+            return existing
+    return None
+
+
+def format_entry(entry):
+    return f"{entry['title']}{ENTRY_SEP}{entry['content']}\n"
 
 
 def append_entry(path, entry, project_name=None):
     path = resolve_path(path)
-    os.makedirs(os.path.dirname(path), exist_ok=True)
+    entry = parse_entry(entry)
+    hits = sensitive_hits(entry)
+    if hits:
+        raise ValueError("sensitive content detected: " + ", ".join(hits))
 
-    if not os.path.exists(path):
-        header = "# 经验记录\n\n"
+    os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
+    existed = os.path.exists(path)
+    original_content = load_text(path) if existed else None
+    existing_entries = read_experiences(path) if existed else []
+    duplicate = find_duplicate(entry, existing_entries)
+    if duplicate:
+        raise ValueError(
+            "duplicate or near-duplicate entry: "
+            f"{duplicate.get('title')}"
+        )
+
+    if original_content is None:
+        content = "# 经验记录\n\n"
         if project_name:
-            header += f"项目：{project_name}\n\n"
-        with open(path, "w") as f:
-            f.write(header)
-
-    with open(path, "r") as f:
-        content = f.read()
+            content += f"项目：{project_name}\n\n"
+    else:
+        content = original_content
 
     today = date.today().isoformat()
     date_header = f"## {today}"
 
-    entry_text = format_entry(json.loads(entry) if isinstance(entry, str) else entry)
+    entry_text = format_entry(entry)
 
     if date_header in content:
-        content = content.replace(
-            date_header, date_header + "\n" + entry_text
-        )
+        content = content.replace(date_header, date_header + "\n" + entry_text)
     else:
         content = content.rstrip() + "\n\n" + date_header + "\n" + entry_text + "\n"
 
-    with open(path, "w") as f:
-        f.write(content)
+    write_text(path, content)
+    if not validate(path):
+        if original_content is None:
+            os.remove(path)
+        else:
+            write_text(path, original_content)
+        raise ValueError("validation failed after append; rolled back")
 
     print(f"Entry added to {path}")
     return True
@@ -131,13 +199,21 @@ def validate(path):
         return False
 
     errors = []
-    with open(path, "r") as f:
-        for i, line in enumerate(f, 1):
-            if line.startswith("### [") and "]" not in line:
-                errors.append(f"Line {i}: malformed entry header")
-            if "**内容**：" in line and not line.strip().endswith("。"):
-                if not line.strip().endswith("\n"):
-                    pass
+    content = load_text(path)
+    for name, pattern in SENSITIVE_PATTERNS:
+        if pattern.search(content):
+            errors.append(f"sensitive content detected: {name}")
+
+    lines = content.split("\n")
+    for i, line in enumerate(lines, 1):
+        stripped = line.strip()
+        if ENTRY_SEP in stripped:
+            if stripped.startswith("#") or stripped.startswith("-") or stripped.startswith(">") or stripped.startswith("```"):
+                continue
+            parts = stripped.split(ENTRY_SEP, 1)
+            if not parts[0].strip() or not parts[1].strip():
+                errors.append(f"Line {i}: entry with empty title or content")
+
     if errors:
         for e in errors:
             print(f"  WARN: {e}")
@@ -147,15 +223,11 @@ def validate(path):
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Manage experiences.md file"
-    )
+    parser = argparse.ArgumentParser(description="Manage experiences.md file")
     parser.add_argument("action", choices=["read", "append", "validate"])
     parser.add_argument("--path", default=DEFAULT_PATH, help="Path to experiences.md")
     parser.add_argument("--entry", help="JSON string for append action")
-    parser.add_argument(
-        "--project", help="Project name (used when creating new file)"
-    )
+    parser.add_argument("--project", help="Project name (used when creating new file)")
 
     args = parser.parse_args()
 
@@ -167,7 +239,11 @@ def main():
         if not args.entry:
             print("ERROR: --entry is required for append action")
             sys.exit(1)
-        append_entry(args.path, args.entry, args.project)
+        try:
+            append_entry(args.path, args.entry, args.project)
+        except ValueError as exc:
+            print(f"ERROR: {exc}", file=sys.stderr)
+            sys.exit(1)
 
     elif args.action == "validate":
         valid = validate(args.path)
