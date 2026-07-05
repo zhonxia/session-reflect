@@ -1,142 +1,145 @@
 ---
 name: session-reflect
 description: >
-  Analyze the current opencode conversation session to extract valuable
-  lessons, patterns, decisions, and user preferences. Persist selected
-  insights to .opencode/experiences.md for cross-session memory.
-
-  Trigger when the user wants to:
-  - Reflect on or summarize the current session
-  - Extract lessons learned from conversation history
-  - Save experience/memory/knowledge from the session
-  - Review what was accomplished and what to do next
-  - Analyze patterns across past sessions
-  - 总结会话、提炼经验、保存记忆、回顾进展
-
-  Do NOT trigger for simple history lookups or file searches.
+  Extract durable lessons from an opencode/Codex conversation and save only
+  user-approved insights to .opencode/experiences.md. Use when the user asks to
+  summarize session experience, reflect on a session, extract lessons learned,
+  save memory/knowledge, 提炼经验, 总结会话, 保存记忆, or review what should carry
+  into future sessions. Do not use for ordinary history lookup, simple file
+  search, or summaries that do not need persistent experience records.
 ---
 
 # Session Reflect
 
-Extract structured, actionable experience from opencode conversations and persist it for future sessions.
+Extract structured, actionable experience from the current conversation and
+persist selected items for future sessions.
 
-## Design Philosophy
+## Core Rules
 
-The skill uses a two-layer context injection strategy to ensure experiences
-are actually utilized in new sessions:
-
-**Layer 1 — AGENTS.md (active check)**
-A mandatory rule in the project's `AGENTS.md` (see `examples/quickstart/AGENTS.md`):
-
-```markdown
-在回答之前，先检查 .opencode/experiences.md 中是否有与当前问题相关的历史经验记录。
-```
-
-This forces Claude to check the experiences file before every answer.
-It applies to all sessions regardless of skill triggers.
-
-**Layer 2 — opencode.json References (passive awareness)**
-The experiences file is registered as an opencode reference with a description (see `examples/quickstart/opencode.json`):
-
-```json
-{
-  "references": {
-    "experiences": {
-      "path": ".opencode/experiences.md",
-      "description": "关键经验记录。回答任何问题前必须读取此文件。"
-    }
-  }
-}
-```
-Claude knows the file exists and its purpose, and reads it when it judges the
-topic relevant — but does not check it before every reply.
-
-**How they work together:**
-- AGENTS.md solves "Claude doesn't know to look" (breadth)
-- References solve "Claude knows the file but doesn't always connect it" (precision)
-- session-reflect skill solves "how to produce experiences" (source)
-
-All three form a closed loop: **produce (skill) → persist (experiences.md) → consume (AGENTS + References)**
+- Never write before user approval. Present candidate entries first and wait for
+  the user's selection or edits.
+- Never save secrets: passwords, API keys, tokens, credentials, private keys, or
+  sensitive personal data.
+- Treat `.opencode/experiences.md` as the persistent store.
+- Resolve bundled resources from the directory that contains this `SKILL.md`
+  (`<skill-dir>`). In this repository, `<skill-dir>` is
+  `skills/session-reflect/`.
+- Keep entries reusable. Capture the lesson, not a transcript.
 
 ## Workflow
 
-When triggered, follow these steps in order:
+1. **Scan** the current conversation for reusable experience:
+   multi-step resolutions, key decisions, user preferences, useful discoveries,
+   personal setup facts, and action items.
+2. **Review history** (when useful):
+   `python3 <skill-dir>/scripts/analyze_history.py --limit 10`
+3. **Cross-check** existing experiences and mark duplicates:
+   `python3 <skill-dir>/scripts/manage_experience.py read`
+4. **Verify** each candidate against the Candidate Rules below. **Every candidate
+   must pass this check** — discard any that violate "Do Not Save" rules.
+5. **Format** candidates using the Output Format template below.
+6. After the user chooses entries, **append** each selected item with:
+   `python3 <skill-dir>/scripts/manage_experience.py append --entry '<json>' --project '<project-name>'`
+7. **Validate** after writing:
+   `python3 <skill-dir>/scripts/manage_experience.py validate`
 
-### 1. Scan Current Session
+---
 
-Analyze the ongoing conversation for these categories:
+## Candidate Rules
 
-| Category | What to look for |
-|----------|------------------|
-| **Multi-step Resolutions** | Problems that took 2+ attempts. Note: what was tried, what failed, what finally worked |
-| **Key Decisions** | Architecture/tech/library choices with rationale ("chose X over Y because Z") |
-| **User Preferences** | Recurring style: code conventions, naming, tools, workflows, formatting |
-| **Useful Discoveries** | Commands, shortcuts, libraries, tricks that were new or noteworthy |
-| **Personal Setup** | Terminal config, env vars, installed tools, shell preferences, system info, alias, editor choice |
-| **Action Items** | Unfinished business, follow-ups, things to resume next session |
+Use these rules to decide what should become a saved experience.
 
-**Entry format:**
-Each entry follows this compact format:
+### ❌ Do Not Save (check first — reject any that match)
 
-```markdown
-<title> — <one-sentence insight>
-```
+- Session transcripts or broad summaries.
+- Raw command output unless a short redacted excerpt is essential.
+- One-off status updates with no future decision value.
+- Obvious facts already encoded in source files (AGENTS.md, opencode.json, README, etc.).
+- Facts that can be read directly from project source files.
+- Speculation that was not validated.
+- Secrets, credentials, private keys, API tokens, or exact environment variable values.
 
-No field labels, no categories, no tags. The title captures the topic, the sentence captures the core lesson.
+### ✅ Save
 
-### 2. Read Supplemental History
+Save entries that can change future behavior:
 
-Use `scripts/analyze_history.py` to get structured data from past sessions:
+| Signal | Save when |
+|--------|-----------|
+| Same problem needed 2+ attempts | The final fix or root cause is reusable |
+| User corrected the agent | The correction reveals a stable preference or project rule |
+| Tool, CLI, auth, path, or environment gotcha | The detail is likely to recur on this machine or project |
+| Architecture or workflow choice | The rationale matters for future tradeoffs |
+| Better recurring approach found | It prevents repeated wasted work |
+| Unfinished work with concrete next step | The next session can resume from it |
 
-```bash
-python3 scripts/analyze_history.py --limit 10
-```
+### Recommendation Level
 
-Look for:
-- Recurring topics or problem domains
-- Repeated tool usage patterns
-- Whether similar issues appeared before
-- Session cost/token patterns that signal complexity
+| Label | Meaning |
+|-------|---------|
+| ⭐ 推荐保留 | Clear future value and not already captured |
+| 可选保留 | Some future value, but lower confidence or narrower scope |
+| 不建议保存 | Mention only if the user asked for exhaustive review |
 
-### 3. Cross-Reference Existing Experiences
+If an item cannot be distilled into a clear takeaway with all three fields (problem/insight/apply), do not mark it as ⭐.
 
-Read `.opencode/experiences.md` if it exists. For each candidate entry,
-check the existing entries for matches. Mark duplicates as `✓ 已收录`.
+### Promotion
 
-### 4. Present Findings to User
+If a lesson applies beyond the current project, promote instead of only saving to `.opencode/experiences.md`:
 
-Format findings using card-style layout grouped by category.
-Use emoji category headers with horizontal separators.
-Mark duplicate entries inline.
+| Scope | Destination |
+|-------|-------------|
+| Current project | `.opencode/experiences.md` |
+| All sessions in this repo | `AGENTS.md` |
+| Personal global rule | User-level AGENTS/RTK/personal instruction file |
+| Tool-specific gotcha | Tool reference or setup notes |
 
-**Category emoji mapping:**
-- `🛠` = Multi-step Resolutions
-- `💡` = Key Decisions / Useful Discoveries
-- `🎨` = User Preferences
-- `🔧` = Personal Setup
-- `📋` = Action Items
+---
 
-**Formatting rules (strict):**
-- Each category block: `🛠 类别 ─────────` on its own line, always followed by a blank line
-- Each entry: numbered, title on its own line, content indented below, always separated by blank lines
-- Duplicates: same structure but mark `✓ 已收录` on the content line
-- Footer separator: `───` on its own line, then prompt on next line
-- Count at top: count only new (non-duplicate) items
+## Output Format
 
-Example output:
+### Review Layout
 
-```
-📌 本次会话经验提炼（2项）
+- Count only new, non-duplicate items in the title.
+- Group entries by category.
+- Mark existing or near-duplicate entries with `✓ 已收录`.
+- Mark high-value new entries with `⭐ 推荐保留`; use `可选保留` for lower-confidence items.
+- End by asking the user which entries to keep: `编号 / all / none / 修改措辞`.
+
+### Category Headers
+
+| Header | Use for |
+|--------|---------|
+| `🛠 多轮攻坚` | Problems solved after multiple attempts |
+| `💡 决策记录` | Architecture, tool, or process decisions |
+| `💡 实用发现` | Commands, libraries, shortcuts, useful facts |
+| `🎨 用户偏好` | Style, naming, workflow, and formatting preferences |
+| `🔧 个人环境` | Local setup, shell, editor, paths, installed tools |
+| `📋 待办提醒` | Follow-ups and unfinished work |
+
+### Template
+
+```text
+📌 本次会话经验提炼（N项）
 
 🛠 多轮攻坚 ─────────────────
 
-  1. Docker 构建缓存失效 — ARG 顺序影响缓存键，不变 ARG 放前可最大化命中
+  1. 标题
+
+     问题：一句话
+     经验：一句话
+     适用：一句话
+     关键词：tag1, tag2
 
      ⭐ 推荐保留
 
 💡 实用发现 ─────────────────
 
-  2. GitHub push SSH key 未配置 — 改用 HTTPS remote URL 成功推送
+  2. 标题
+
+     问题：一句话
+     经验：一句话
+     适用：一句话
+
      ✓ 已收录
 
 ────────────────────────────────────
@@ -144,39 +147,75 @@ Example output:
 保留哪些？输入编号(如 1,2) / all / none，可直接修改措辞
 ```
 
-### 5. Save Selected Items
+---
 
-For each approved entry, use the helper script:
+## Entry Format
 
-```bash
-python3 scripts/manage_experience.py append \
-  --entry '{"title":"Docker 构建缓存","content":"ARG 顺序影响缓存键，不变 ARG 放前可最大化命中"}' \
-  --project "$(basename $(pwd))"
+Each saved entry uses this structure:
+
+```markdown
+### 标题
+- **问题**：场景或问题描述（一句话）
+- **经验**：核心教训或发现（一句话）
+- **适用**：什么时候会再次有用（一句话）
+- **关键词**：tag1, tag2, tag3
 ```
 
-Always confirm the entry was saved before continuing.
+### Field Descriptions
+
+| Field | Purpose | Required |
+|-------|---------|----------|
+| **问题** | What happened — the scenario, doubt, or problem | Yes |
+| **经验** | The key lesson — what was discovered, decided, or learned | Yes |
+| **适用** | When this knowledge helps again — future scenarios | Yes |
+| **关键词** | Search tags for retrieval: language, tool, concept | Recommended |
+
+### JSON Format (for append script)
+
+```json
+{
+  "title": "GitHub Push SSH 配置",
+  "problem": "首次推送时 SSH key 未配置，git push 被拒绝",
+  "insight": "改用 HTTPS remote URL 可绕过 SSH 验证",
+  "apply": "新机器首次配置 GitHub 时",
+  "keywords": ["git", "github", "ssh"]
+}
+```
+
+### File Format
+
+`.opencode/experiences.md` uses markdown with reverse chronological order:
+
+```markdown
+# 经验记录
+
+项目：项目名（可选）
+
+## YYYY-MM-DD
+
+### 标题
+- **问题**：描述
+- **经验**：描述
+- **适用**：描述
+- **关键词**：tag1, tag2
+```
+
+---
 
 ## Scripts
 
 ### `scripts/analyze_history.py`
+
 Reads `opencode.db` (SQLite) from `~/.local/share/opencode/` and outputs structured session summaries.
+
 - `--limit N`: last N sessions (default 5)
 - `--session ID`: specific session
 - `--json`: machine-readable output
 
 ### `scripts/manage_experience.py`
+
 Reads, appends, and validates `.opencode/experiences.md`.
+
 - `read`: dump existing entries as JSON
 - `append --entry '...'`: add a new entry
-- `validate`: check file format
-
-## References
-
-See `references/format.md` for the experiences file format specification and conventions.
-
-## Notes
-
-- This skill works best with the opencode CLI/TUI (which stores full session data in `opencode.db`). The desktop app stores only prompt history in JSONL format.
-- Always present findings for user approval before writing. Never auto-append entries.
-- For the current session analysis, Claude already has the full conversation in context — no file reading needed for step 1.
-- **Security: NEVER extract or save passwords, API keys, tokens, or any credentials.** The experiences file is plain markdown and may be committed to git. Use a dedicated password manager (1Password, Bitwarden) or opencode MCP secrets for sensitive data.
+- `validate`: check file format and reject sensitive content

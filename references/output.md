@@ -1,3 +1,9 @@
+# ⚠️ 已合并到 SKILL.md — 此文件保留仅用于向后兼容
+
+内容已迁移到 SKILL.md > Output Format 章节。请直接使用 SKILL.md。
+
+---
+
 # Output Format
 
 Use this reference when presenting candidate experience entries to the user.

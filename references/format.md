@@ -1,3 +1,9 @@
+# ⚠️ 已合并到 SKILL.md — 此文件保留仅用于向后兼容
+
+内容已迁移到 SKILL.md > Entry Format / File Format 章节。请直接使用 SKILL.md。
+
+---
+
 # 经验文件格式规范
 
 `.opencode/experiences.md` 采用 Markdown 格式，按日期倒序组织。

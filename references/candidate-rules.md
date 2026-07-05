@@ -1,3 +1,9 @@
+# ⚠️ 已合并到 SKILL.md — 此文件保留仅用于向后兼容
+
+内容已迁移到 SKILL.md > Candidate Rules 章节。请直接使用 SKILL.md。
+
+---
+
 # Candidate Rules
 
 Use this reference when deciding what should become a saved experience.
