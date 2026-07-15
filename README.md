@@ -6,6 +6,8 @@
 
 **Extract lessons from every AI coding session — and never forget them.**
 
+[🇨🇳 中文](README.zh.md) | [🇬🇧 English](README.md)
+
 Session Reflect analyzes your opencode conversations, identifies valuable experiences (multi-step fixes, key decisions, personal preferences, useful discoveries), and persists them to a local file. In future sessions, the accumulated experience is automatically available — no more repeating yourself or rediscovering the same solutions.
 
 ---
